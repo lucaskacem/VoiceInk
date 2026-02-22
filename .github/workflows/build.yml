@@ -1,0 +1,38 @@
+name: Build VoiceInk
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+      - name: Install dependencies
+        run: brew install cmake
+
+      - name: Build whisper.xcframework
+        run: |
+          mkdir -p ~/VoiceInk-Dependencies
+          git clone https://github.com/ggerganov/whisper.cpp.git ~/VoiceInk-Dependencies/whisper.cpp
+          cd ~/VoiceInk-Dependencies/whisper.cpp
+          ./build-xcframework.sh
+
+      - name: Resolve SPM dependencies
+        run: xcodebuild -resolvePackageDependencies -project VoiceInk.xcodeproj -scheme VoiceInk
+
+      - name: Build VoiceInk (local, no signing)
+        run: make local
+
+      - name: Upload VoiceInk.app
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceInk-app
+          path: ~/Downloads/VoiceInk.app
+          retention-days: 30
